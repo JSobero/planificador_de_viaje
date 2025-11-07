@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>TravelFlow Perú</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <!-- Axios y Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Estilos personalizados -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans h-screen overflow-hidden">
+
+<div class="flex h-screen space-x-4 p-4">
+
+  <!-- Panel izquierdo -->
+  <div class="w-1/4 flex flex-col space-y-4">
+
+    <!-- Tarjeta Control -->
+    <div class="card bg-gray-800 p-4 rounded shadow-lg">
+      <h2 class="text-2xl font-bold mb-4 text-blue-400 tracking-wide">Elige tu ruta y presupuesto</h2>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm text-gray-300">Origen</label>
+          <select id="origin" class="w-full p-2 rounded bg-gray-700 focus:ring-2 focus:ring-blue-500">
+            {% for c in cities %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-300">Destino</label>
+          <select id="destination" class="w-full p-2 rounded bg-gray-700 focus:ring-2 focus:ring-blue-500">
+            {% for c in cities %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-300">Presupuesto ($)</label>
+          <input id="budget" type="number" class="w-full p-2 rounded bg-gray-700 focus:ring-2 focus:ring-blue-500" value="120">
+        </div>
+        <div class="flex flex-col space-y-2 mt-3">
+          <button id="searchBtn" class="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold">Buscar Ruta</button>
+          <button id="recommendBtn" class="w-full py-2 bg-green-600 hover:bg-green-700 rounded font-semibold">Recomendar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta Dispersión / Recomendaciones -->
+    <div class="card bg-gray-800 p-4 rounded shadow-lg flex-1 min-h-[250px]">
+      <h3 class="text-xl font-bold text-blue-400 mb-3">CO₂ vs Costo</h3>
+      <canvas id="scatterChart" class="h-full w-full"></canvas>
+    </div>
+
+  </div>
+
+  <!-- Centro -->
+<div class="flex-1 flex flex-col space-y-4">
+
+  <!-- Fila 1: Métricas (tamaño fijo) -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="card stat-card">
+      <h4>Ruta Más Barata</h4>
+      <p id="stat-cheapest">-</p>
+    </div>
+    <div class="card stat-card">
+      <h4>Ruta Más Corta</h4>
+      <p id="stat-shortest">-</p>
+    </div>
+    <div class="card stat-card">
+      <h4>Costo Total</h4>
+      <p id="stat-cost">$0</p>
+    </div>
+    <div class="card stat-card">
+      <h4>CO₂ Emitido</h4>
+      <p id="stat-co2">0 kg</p>
+    </div>
+  </div>
+
+  <!-- Fila 2: Mapa (flexible y grande) -->
+  <div class="card bg-gray-800 p-4 rounded shadow-lg flex-2 min-h-[350px]">
+    <h3 class="text-xl font-bold text-blue-400 mb-3">Mapa de Rutas</h3>
+    <div id="map" class="h-full w-full rounded border-2 border-gray-700 overflow-hidden"></div>
+  </div>
+
+  <!-- Fila 3: Gráfico comparativo (flexible, menor que mapa) -->
+  <div class="card bg-gray-800 p-4 rounded shadow-lg flex-1 min-h-[200px]">
+    <h3 class="text-xl font-bold text-blue-400 mb-3">Comparativa de Rutas</h3>
+    <canvas id="chart" class="h-full w-full"></canvas>
+  </div>
+
+</div>
+
+
+  <!-- Derecha: Todas las rutas -->
+  <div class="w-1/4">
+    <div class="card bg-gray-800 p-4 rounded shadow-lg h-full flex flex-col">
+      <h3 class="text-xl font-bold text-blue-400 mb-3">Todas las Rutas</h3>
+      <div id="allRoutes" class="flex-1 flex flex-col gap-3 overflow-auto">
+        <!-- Cada ruta se agrega como tarjeta interna -->
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script id="coords-data" type="application/json">
+  {{ coords | tojson }}
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
