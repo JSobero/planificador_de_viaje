@@ -16,10 +16,17 @@ def calc_cost(distance):
 
 def calc_co2(distance):
     """CO₂ emitido ficticio (0.15 kg/km)."""
+    # Si la distancia es larga, asumimos transporte aéreo (mayor factor por km)
+    if distance >= 300:
+        return round(distance * 0.25, 2)
     return round(distance * 0.15, 2)
 
 def calc_duration(distance):
     """Duración en horas (60 km/h promedio)."""
+    # Si la distancia es larga, asumimos vuelo: velocidad crucero ~800 km/h
+    # y añadimos un tiempo fijo por vuelo (embarque/desembarque) ~1.5 h
+    if distance >= 300:
+        return round(distance / 800 + 1.5, 2)
     return round(distance / 60, 2)
 
 # ---------- Programación Lógica -----------
@@ -53,18 +60,22 @@ def search_route(origin, destination, budget):
             # Si llegamos al destino (y la ruta tiene al menos un tramo), calcular métricas
             if current == destination and len(path) > 1:
                 total_distance = 0
+                total_duration = 0
+                total_co2 = 0
+                # Calcular métricas por tramo (asumiendo modo según distancia)
                 for i in range(len(path) - 1):
-                    total_distance += calc_distance(path[i], path[i+1])
+                    leg = calc_distance(path[i], path[i+1])
+                    total_distance += leg
+                    total_duration += calc_duration(leg)
+                    total_co2 += calc_co2(leg)
                 cost = calc_cost(total_distance)
                 if cost <= budget:
-                    co2 = calc_co2(total_distance)
-                    duration = calc_duration(total_distance)
                     results.append({
                         "path": tuple(path),
                         "total_distance_km": round(total_distance, 2),
                         "total_cost": cost,
-                        "total_co2": co2,
-                        "total_duration_h": duration
+                        "total_co2": round(total_co2, 2),
+                        "total_duration_h": round(total_duration, 2)
                     })
                 return
 
@@ -95,9 +106,9 @@ def search_route(origin, destination, budget):
     if not routes_found:
         return None
 
-    # Determinar la más barata y la más corta
+    # Determinar la más barata y la más rápida (menor duración)
     cheapest = min(routes_found, key=lambda x: x["total_cost"])
-    shortest = min(routes_found, key=lambda x: x["total_distance_km"])
+    shortest = min(routes_found, key=lambda x: x["total_duration_h"])
 
     return {
         "cheapest": cheapest,
