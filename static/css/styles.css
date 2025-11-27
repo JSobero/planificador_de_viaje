@@ -56,7 +56,17 @@
   overflow-y: auto;
 }
 
+html, body {
+  height: auto;
+  min-height: 100vh;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
 /* General */
 body {
   font-family: 'Inter', sans-serif;
+  background-color: #111827;
+  color: #f9fafb;
 }

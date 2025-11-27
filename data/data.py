@@ -1,5 +1,7 @@
+# CIUDADES Y COORDENADAS
 cities = [
-    "Lima", "Cusco", "Arequipa", "Trujillo", "Puno", "Iquitos", "Piura", "Tacna", "Chiclayo"
+    "Lima", "Cusco", "Arequipa", "Trujillo", "Puno",
+    "Iquitos", "Piura", "Tacna", "Chiclayo"
 ]
 
 coords = {
@@ -14,7 +16,6 @@ coords = {
     "Chiclayo": [-6.7714, -79.8395]
 }
 
-routes = [
-    ("Lima", "Cusco"), ("Lima", "Arequipa"), ("Cusco", "Puno"),
-    ("Trujillo", "Chiclayo"), ("Piura", "Chiclayo"), ("Tacna", "Arequipa")
-]
+# RUTAS
+# Generar todas las combinaciones posibles
+routes = [(a, b) for a in cities for b in cities if a != b]

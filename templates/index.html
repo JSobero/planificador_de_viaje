@@ -19,7 +19,7 @@
   <!-- Estilos personalizados -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans h-screen overflow-hidden">
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen overflow-auto">
 
 <div class="flex h-screen space-x-4 p-4">
 
@@ -55,7 +55,7 @@
 
     <!-- Tarjeta Dispersión / Recomendaciones -->
     <div class="card bg-gray-800 p-4 rounded shadow-lg flex-1 min-h-[250px]">
-      <h3 class="text-xl font-bold text-blue-400 mb-3">CO₂ vs Costo</h3>
+      <h3 class="text-xl font-bold text-blue-400 mb-3">Tiempo vs Costo</h3>
       <canvas id="scatterChart" class="h-full w-full"></canvas>
     </div>
 
@@ -65,13 +65,13 @@
 <div class="flex-1 flex flex-col space-y-4">
 
   <!-- Fila 1: Métricas (tamaño fijo) -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
     <div class="card stat-card">
       <h4>Ruta Más Barata</h4>
       <p id="stat-cheapest">-</p>
     </div>
     <div class="card stat-card">
-      <h4>Ruta Más Corta</h4>
+      <h4>Ruta Más Rápida</h4>
       <p id="stat-shortest">-</p>
     </div>
     <div class="card stat-card">
@@ -79,7 +79,11 @@
       <p id="stat-cost">$0</p>
     </div>
     <div class="card stat-card">
-      <h4>CO₂ Emitido</h4>
+      <h4>Duración Total</h4>
+      <p id="stat-duration">0 h 0 min</p>
+    </div>
+    <div class="card stat-card">
+      <h4>CO₂ Estimado</h4>
       <p id="stat-co2">0 kg</p>
     </div>
   </div>
@@ -115,5 +119,6 @@
   {{ coords | tojson }}
 </script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
 </html>
