@@ -8,6 +8,17 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let routeLayer;
 let chart;
 let scatterChart;
+let routePolylines = [];
+let selectedPolyline = null;
+const routeColors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f472b6"];
+
+// Formatea duración en horas decimales a "H h M min"
+function formatDuration(hours) {
+  if (hours === undefined || hours === null || isNaN(hours)) return "-";
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  return `${h} h ${m} min`;
+}
 
 document.getElementById("searchBtn").onclick = searchRoute;
 document.getElementById("recommendBtn").onclick = recommend;
@@ -98,13 +109,50 @@ function updateDashboard(routes) {
 function drawRoutes(routes) {
   if (routeLayer) map.removeLayer(routeLayer);
   routeLayer = L.layerGroup();
+  routePolylines = [];
 
   routes.forEach((r, i) => {
-    const color = i === 0 ? "cyan" : "#f59e0b";
+    const color = routeColors[i % routeColors.length];
     const pts = r.path.map(c => cityCoords[c]).filter(Boolean);
-    L.polyline(pts, { color, weight: 3 }).addTo(routeLayer);
+    const poly = L.polyline(pts, { color, weight: 3, opacity: 0.9 });
+    poly.addTo(routeLayer);
+
+    // Guardar referencia y enlazar eventos para interactividad
+    poly.routeIndex = i;
+    routePolylines.push(poly);
+
+    poly.on('click', function(e) {
+      // Resetear estilo de todas
+      routePolylines.forEach(p => { p.setStyle({ weight: 3, opacity: 0.9 }); p.selected = false; });
+      // Resaltar seleccionado
+      this.setStyle({ weight: 6, opacity: 1 });
+      this.selected = true;
+      selectedPolyline = this;
+
+      // Mostrar popup con detalles de la ruta
+      const route = routes[this.routeIndex];
+        const popupContent = `<b>Ruta</b><br>${route.path.join(' → ')}<br>Dist: ${route.total_distance_km} km<br>Costo: $${route.total_cost}<br>Duración: ${formatDuration(route.total_duration_h)}<br>CO₂: ${route.total_co2} kg`;
+      this.bindPopup(popupContent).openPopup(e.latlng);
+
+      // Actualizar métricas principales para reflejar la ruta seleccionada
+      document.getElementById("stat-cost").textContent = `$${route.total_cost}`;
+        document.getElementById("stat-duration").textContent = formatDuration(route.total_duration_h);
+        const co2Elem = document.getElementById("stat-co2");
+        if (co2Elem) co2Elem.textContent = `${route.total_co2} kg`;
+    });
+
+    poly.on('mouseover', function() { if (!this.selected) this.setStyle({ weight: 5 }); });
+    poly.on('mouseout', function() { if (!this.selected) this.setStyle({ weight: 3 }); });
   });
   routeLayer.addTo(map);
+
+  // Ajustar vista para incluir todas las rutas dibujadas
+  try {
+    const bounds = routeLayer.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+  } catch (err) {
+    // ignore
+  }
 }
 
 // -------- MÉTRICAS ---------
@@ -112,12 +160,14 @@ function updateMetrics(routes) {
   if (!routes.length) return;
 
   const cheapest = routes.reduce((a,b) => a.total_cost < b.total_cost ? a : b);
-  const shortest = routes.reduce((a,b) => a.total_distance_km < b.total_distance_km ? a : b);
+  const shortest = routes.reduce((a,b) => a.total_duration_h < b.total_duration_h ? a : b);
 
   document.getElementById("stat-cheapest").textContent = cheapest.path.join(" → ");
   document.getElementById("stat-shortest").textContent = shortest.path.join(" → ");
   document.getElementById("stat-cost").textContent = `$${cheapest.total_cost}`;
-  document.getElementById("stat-co2").textContent = `${cheapest.total_co2} kg`;
+  document.getElementById("stat-duration").textContent = formatDuration(cheapest.total_duration_h);
+  const co2Elem = document.getElementById("stat-co2");
+  if (co2Elem) co2Elem.textContent = `${cheapest.total_co2} kg`;
 }
 
 // ------- GRÁFICOS ----------
@@ -162,17 +212,17 @@ function updateChart(routes) {
 
 function updateScatterChart(routes) {
   const ctx = document.getElementById("scatterChart").getContext("2d");
-  const points = routes.map(r => ({x: r.total_cost, y: r.total_co2, label: r.path.join(" → ")}));
+  const points = routes.map(r => ({x: r.total_cost, y: r.total_duration_h, label: r.path.join(" → ")}));
 
   if (scatterChart) scatterChart.destroy();
   scatterChart = new Chart(ctx, {
     type: 'scatter',
-    data: { datasets: [{ label: "CO₂ vs Costo", data: points, backgroundColor: "#f87171" }] },
+    data: { datasets: [{ label: "Tiempo vs Costo", data: points, backgroundColor: "#f87171" }] },
     options: {
       responsive: true,
       plugins: { 
         tooltip: { callbacks: { 
-          label: ctx => ctx.raw.label + `: ($${ctx.raw.x}, ${ctx.raw.y}kg)` 
+          label: ctx => ctx.raw.label + `: ($${ctx.raw.x}, ${formatDuration(ctx.raw.y)})` 
         } },
         legend: { labels: { color: "#fff" } }
       },
@@ -182,7 +232,7 @@ function updateScatterChart(routes) {
           ticks: { color: "#fff" }
         },
         y: { 
-          title: { display: true, text: 'CO₂ (kg)', color: "#fff" },
+          title: { display: true, text: 'Duración (h)', color: "#fff" },
           ticks: { color: "#fff" }
         }
       }
@@ -194,10 +244,18 @@ function updateScatterChart(routes) {
 function showAllRoutes(routes) {
   const container = document.getElementById("allRoutes");
   container.innerHTML = "";
-  routes.forEach(r => {
+  routes.forEach((r, i) => {
     const div = document.createElement("div");
-    div.className = "bg-gray-700 p-2 rounded shadow hover:shadow-lg transition";
-    div.innerHTML = `<b class="text-blue-300">${r.path.join(" → ")}</b> | Distancia: ${r.total_distance_km} km | Costo: $${r.total_cost} | CO₂: ${r.total_co2} kg`;
+    div.className = "bg-gray-700 p-2 rounded shadow hover:shadow-lg transition cursor-pointer";
+    div.innerHTML = `<b class="text-blue-300">${r.path.join(" → ")}</b> | Distancia: ${r.total_distance_km} km | Costo: $${r.total_cost} | Duración: ${formatDuration(r.total_duration_h)} | CO₂: ${r.total_co2} kg`;
+    div.onclick = () => {
+      if (routePolylines[i]) {
+        // Simular click en la polilínea correspondiente
+        routePolylines.forEach(p => { p.setStyle({ weight: 3, opacity: 0.9 }); p.selected = false; });
+        routePolylines[i].fire('click');
+        try { map.fitBounds(routePolylines[i].getBounds(), { padding: [40, 40] }); } catch (err) {}
+      }
+    };
     container.appendChild(div);
   });
 }

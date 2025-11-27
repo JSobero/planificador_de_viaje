@@ -41,37 +41,68 @@ FeasibleRoute(O, D, B) <= (Route(O, D, Dist)) & (Dist * 0.25 <= B)
 # ----------- Funciones FP + LP -----------
 def search_route(origin, destination, budget):
     """Busca ruta entre dos ciudades si es factible."""
-    from pyDatalog import pyDatalog
-    pyDatalog.clear()
-    pyDatalog.create_terms('City, Route, FeasibleRoute, O, D, Dist, B')
-    for c in cities:
-        + City(c)
-    for (a, b) in routes:
-        dist = calc_distance(a, b)
-        + Route(a, b, dist)
-    FeasibleRoute(O, D, B) <= (Route(O, D, Dist)) & (Dist * 0.25 <= B)
+    # Generar múltiples rutas simples (directas y con hasta 2 escalas)
+    def generate_routes(origin, destination, budget, max_stops=2, max_results=3):
+        results = []
 
-    res = FeasibleRoute(origin, destination, budget)
-    if not res:
+        def dfs(current, path, visited, stops):
+            # Si excede el número de escalas permitido, cortar
+            if stops > max_stops:
+                return
+
+            # Si llegamos al destino (y la ruta tiene al menos un tramo), calcular métricas
+            if current == destination and len(path) > 1:
+                total_distance = 0
+                for i in range(len(path) - 1):
+                    total_distance += calc_distance(path[i], path[i+1])
+                cost = calc_cost(total_distance)
+                if cost <= budget:
+                    co2 = calc_co2(total_distance)
+                    duration = calc_duration(total_distance)
+                    results.append({
+                        "path": tuple(path),
+                        "total_distance_km": round(total_distance, 2),
+                        "total_cost": cost,
+                        "total_co2": co2,
+                        "total_duration_h": duration
+                    })
+                return
+
+            # Explorar siguientes ciudades (evitar ciclos)
+            for nxt in cities:
+                if nxt in visited:
+                    continue
+                # No necesitamos filtrar por existencia en `routes` porque `routes` contiene todas
+                visited.add(nxt)
+                dfs(nxt, path + [nxt], visited, stops + 1)
+                visited.remove(nxt)
+
+        dfs(origin, [origin], {origin}, 0)
+
+        # Ordenar por costo y devolver hasta max_results rutas únicas
+        # Evitar duplicados por camino
+        unique = {}
+        for r in sorted(results, key=lambda x: x["total_cost"]):
+            key = "->".join(r["path"]) 
+            if key not in unique:
+                unique[key] = r
+            if len(unique) >= max_results:
+                break
+
+        return list(unique.values())
+
+    routes_found = generate_routes(origin, destination, budget, max_stops=2, max_results=3)
+    if not routes_found:
         return None
 
-    distance = calc_distance(origin, destination)
-    cost = calc_cost(distance)
-    co2 = calc_co2(distance)
-    duration = calc_duration(distance)
-
-    route = {
-        "path": (origin, destination),
-        "total_cost": cost,
-        "total_distance_km": distance,
-        "total_duration_h": duration,
-        "total_co2": co2
-    }
+    # Determinar la más barata y la más corta
+    cheapest = min(routes_found, key=lambda x: x["total_cost"])
+    shortest = min(routes_found, key=lambda x: x["total_distance_km"])
 
     return {
-        "cheapest": route,
-        "shortest": route,
-        "all_routes": [route]
+        "cheapest": cheapest,
+        "shortest": shortest,
+        "all_routes": routes_found
     }
 
 
