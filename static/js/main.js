@@ -8,6 +8,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let routeLayer;
 let chart;
 let scatterChart;
+let valueChart;
 let routePolylines = [];
 let selectedPolyline = null;
 const routeColors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f472b6"];
@@ -102,6 +103,7 @@ function updateDashboard(routes) {
   updateMetrics(uniqueRoutes);
   updateChart(uniqueRoutes);
   updateScatterChart(uniqueRoutes);
+  updateValueChart(uniqueRoutes);
   showAllRoutes(uniqueRoutes);
 }
 
@@ -139,6 +141,8 @@ function drawRoutes(routes) {
         document.getElementById("stat-duration").textContent = formatDuration(route.total_duration_h);
         const co2Elem = document.getElementById("stat-co2");
         if (co2Elem) co2Elem.textContent = `${route.total_co2} kg`;
+      // Resaltar barra correspondiente en el gráfico de Costo por hora
+      highlightValueBar(this.routeIndex);
     });
 
     poly.on('mouseover', function() { if (!this.selected) this.setStyle({ weight: 5 }); });
@@ -254,8 +258,69 @@ function showAllRoutes(routes) {
         routePolylines.forEach(p => { p.setStyle({ weight: 3, opacity: 0.9 }); p.selected = false; });
         routePolylines[i].fire('click');
         try { map.fitBounds(routePolylines[i].getBounds(), { padding: [40, 40] }); } catch (err) {}
+        // Resaltar barra correspondiente
+        highlightValueBar(i);
       }
     };
     container.appendChild(div);
   });
+}
+
+// Actualiza gráfico de Costo por hora (Costo / Duración)
+function updateValueChart(routes) {
+  const el = document.getElementById('valueChart');
+  if (!el) return;
+  const ctx = el.getContext('2d');
+  const labels = routes.map(r => r.path.join(' → '));
+  const values = routes.map(r => {
+    const dur = parseFloat(r.total_duration_h) || 0;
+    return dur > 0 ? parseFloat((r.total_cost / dur).toFixed(2)) : parseFloat(r.total_cost.toFixed(2));
+  });
+
+  const bg = labels.map((_, i) => routeColors[i % routeColors.length]);
+
+  if (valueChart) valueChart.destroy();
+  valueChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Costo por hora ($/h)', data: values, backgroundColor: bg }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      scales: {
+        x: { ticks: { color: '#fff' }, title: { display: true, text: '$ / h', color: '#fff' } },
+        y: { ticks: { color: '#fff' }, title: { display: false } }
+      },
+      plugins: { legend: { labels: { color: '#fff' } } },
+      onClick: (evt, elements) => {
+        if (elements && elements.length) {
+          const idx = elements[0].index;
+          if (routePolylines[idx]) routePolylines[idx].fire('click');
+        }
+      }
+    }
+  });
+}
+
+function highlightValueBar(index) {
+  if (!valueChart) return;
+  const ds = valueChart.data.datasets[0];
+  const n = ds.data.length;
+  const bg = [];
+  const border = [];
+  const bw = [];
+  for (let i = 0; i < n; i++) {
+    if (i === index) {
+      bg.push('#ffee58');
+      border.push('#ffd600');
+      bw.push(2);
+    } else {
+      bg.push(routeColors[i % routeColors.length]);
+      border.push('#00000000');
+      bw.push(0);
+    }
+  }
+  ds.backgroundColor = bg;
+  ds.borderColor = border;
+  ds.borderWidth = bw;
+  valueChart.update();
 }

@@ -104,11 +104,17 @@
 
 
   <!-- Derecha: Todas las rutas -->
-  <div class="w-1/4">
-    <div class="card bg-gray-800 p-4 rounded shadow-lg h-full flex flex-col">
+  <div class="w-1/4 flex flex-col gap-4 h-full">
+    <div class="card bg-gray-800 p-4 rounded shadow-lg flex flex-col flex-1">
       <h3 class="text-xl font-bold text-blue-400 mb-3">Todas las Rutas</h3>
       <div id="allRoutes" class="flex-1 flex flex-col gap-3 overflow-auto">
         <!-- Cada ruta se agrega como tarjeta interna -->
+      </div>
+    </div>
+    <div class="card bg-gray-800 p-4 rounded shadow-lg flex flex-col flex-1">
+      <h3 class="text-lg font-bold text-blue-400 mb-3">Costo por Hora</h3>
+      <div class="flex-1 flex items-center justify-center">
+        <canvas id="valueChart" class="w-full h-full"></canvas>
       </div>
     </div>
   </div>
